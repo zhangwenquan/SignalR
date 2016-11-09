@@ -13,6 +13,25 @@
                 document.getElementById('messages').appendChild(child);
             });
 
+            connection.on('UpdateUser', function (user, status) {
+                var child = document.getElementById('id-' + user);
+                if (child == null)
+                {
+                    child = document.createElement('li');
+                    var glyph = document.createElement('span');
+                    glyph.className = "glyphicon glyphicon-asterisk " + status;
+                    child.appendChild(glyph);
+                    var text = document.createElement('span');
+                    text.innerText = user;
+                    child.appendChild(text);
+                    child.id = 'id-' + user;
+                    document.getElementById('users').appendChild(child);
+                }
+
+                var glyph = child.getElementsByClassName("glyphicon");
+                glyph[0].className = "glyphicon glyphicon-asterisk " + status;
+            });
+
             connection.start();
 
             document.getElementById('sendmessage').addEventListener('submit', event => {

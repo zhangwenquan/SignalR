@@ -7,6 +7,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.Authorization;
+using System.Collections.Concurrent;
 
 namespace ChatSample.Hubs
 {
@@ -14,24 +15,71 @@ namespace ChatSample.Hubs
     [Authorize]
     public class Chat : Hub
     {
-        public override Task OnConnectedAsync()
+        private static ConcurrentDictionary<string, HashSet<string>> _userRooms = new ConcurrentDictionary<string, HashSet<string>>();
+
+        public override async Task OnConnectedAsync()
         {
             if (!Context.User.Identity.IsAuthenticated)
             {
                 Context.Connection.Channel.Dispose();
             }
-
-            return Task.CompletedTask;
+            else
+            {
+                await Clients.All.InvokeAsync("UpdateUser", Context.User.Identity.Name, "online");
+            }
         }
 
         public override Task OnDisconnectedAsync()
         {
+            // TODO: Leave rooms
+
+            if (!string.IsNullOrEmpty(Context.User.Identity.Name))
+            {
+                Clients.All.InvokeAsync("UpdateUser", Context.User.Identity.Name, "offline");
+            }
+
             return Task.CompletedTask;
         }
 
         public async Task Send(string message)
         {
-            await Clients.All.InvokeAsync("Send", $"{Context.User.Identity.Name}: {message}");
+            message = message.Trim();
+
+            if (message.StartsWith("/"))
+            {
+                if (message.StartsWith("/join"))
+                {
+                    var tokens = message.Split(' ');
+
+                    if (tokens.Length >= 2)
+                    {
+                        var room = tokens[1];
+
+                        // TODO: track rooms
+
+                        //_userRooms.AddOrUpdate(room, r => new HashSet<string> { Context.User.Identity.Name }, (r, set) => { set.Add(Context.User.Identity.Name); return set; });
+                        await Clients.Group(room).InvokeAsync("Send", $"{Context.User.Identity.Name} joined {room}");
+                        await Groups.AddAsync(room);
+                    }
+                }
+                else if (message.StartsWith("/leave"))
+                {
+                    var tokens = message.Split(' ');
+
+                    if (tokens.Length >= 2)
+                    {
+                        var room = tokens[1];
+
+                        // TODO: track rooms
+                        await Clients.Group(room).InvokeAsync("Send", $"{Context.User.Identity.Name} left {room}");
+                        await Groups.RemoveAsync(room);
+                    }
+                }
+            }
+            else
+            {
+                await Clients.All.InvokeAsync("Send", $"{Context.User.Identity.Name}: {message}");
+            }
         }
     }
 }
