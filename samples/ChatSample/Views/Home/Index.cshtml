@@ -10,7 +10,10 @@
             connection.on('Send', function (message) {
                 var child = document.createElement('li');
                 child.innerText = message;
-                document.getElementById('messages').appendChild(child);
+                var roomChat = document.getElementById(room + "-chat-area");
+                var messages = roomChat.getElementsByTagName('ul');
+                messages[0].appendChild(child);
+                //document.getElementById('messages').appendChild(child);
             });
 
             connection.on('UpdateUser', function (user, status) {
@@ -32,6 +35,24 @@
                 glyph[0].className = "glyphicon glyphicon-asterisk " + status;
             });
 
+            connection.on('JoinRoom', function (room) {
+                var tabs = document.getElementById("chatTabs");
+                var tab = document.createElement('li');
+                var elem = document.createElement('a');
+                elem.href = "#" + room;
+                elem.setAttribute("data-toggle", "tab");
+                elem.innerText = room;
+                tab.appendChild(elem);
+                tabs.appendChild(tab);
+
+                var chatArea = document.getElementById("chat-content");
+                var chatTab = document.createElement('div');
+                chatTab.id = room;
+                chatTab.className = "tab-pane fade in";
+                chatTab.appendChild(createChatArea(room));
+                chatArea.appendChild(chatTab);
+            });
+
             connection.start();
 
             document.getElementById('sendmessage').addEventListener('submit', event => {
@@ -49,7 +70,14 @@
         });
 </script>
 
-<div id="chat-area">
+<div class="container">
+    <ul id="chatTabs" class="nav nav-tabs">
+        <li class="active"><a data-toggle="tab" href="#All">All</a></li>
+    </ul>
+</div>
+
+<div id="chat-content" class="tab-content">
+    <div id="All" class="tab-pane fade in active"><div id="All-chat-area">
     <ul id="messages"></ul>
     <ul id="users"></ul>
     <div class="clear">
@@ -58,4 +86,34 @@
         <input type="text" id="new-message" />
         <input type="submit" id="send" value="Send" class="send" />
     </form>
+</div></div>
+@*    <span onload="showChatArea()"></span>*@
 </div>
+
+@*<div id="chat-area">
+    <ul id="messages"></ul>
+    <ul id="users"></ul>
+    <div class="clear">
+    </div>
+    <form id="sendmessage" action="#">
+        <input type="text" id="new-message" />
+        <input type="submit" id="send" value="Send" class="send" />
+    </form>
+</div>*@
+
+<script>
+    function createChatArea(room) {
+        var chatArea = document.createElement("div");
+        chatArea.id = room + "-chat-area";
+        chatArea.innerHTML = "<ul id=\"messages\"></ul>\
+                              <ul id=\"users\"></ul>\
+                              <div class=\"clear\">\
+                              </div>\
+                              <form id=\"sendmessage\" action=\"#\">\
+                              <input type=\"text\" id=\"new-message\" />\
+                              <input type=\"submit\" id=\"send\" value=\"Send\" class=\"send\" />\
+                              </form>\
+                              </div>";
+        return chatArea;
+    }
+</script>

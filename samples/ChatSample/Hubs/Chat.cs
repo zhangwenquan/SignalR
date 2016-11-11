@@ -58,8 +58,9 @@ namespace ChatSample.Hubs
                         // TODO: track rooms
 
                         //_userRooms.AddOrUpdate(room, r => new HashSet<string> { Context.User.Identity.Name }, (r, set) => { set.Add(Context.User.Identity.Name); return set; });
-                        await Clients.Group(room).InvokeAsync("Send", $"{Context.User.Identity.Name} joined {room}");
+                        await Clients.Group(room).InvokeAsync("Send", room, $"{Context.User.Identity.Name} joined {room}");
                         await Groups.AddAsync(room);
+                        await Clients.Client(Context.ConnectionId).InvokeAsync("JoinRoom", room);
                     }
                 }
                 else if (message.StartsWith("/leave"))
@@ -71,14 +72,14 @@ namespace ChatSample.Hubs
                         var room = tokens[1];
 
                         // TODO: track rooms
-                        await Clients.Group(room).InvokeAsync("Send", $"{Context.User.Identity.Name} left {room}");
                         await Groups.RemoveAsync(room);
+                        await Clients.Group(room).InvokeAsync("Send", room, $"{Context.User.Identity.Name} left {room}");
                     }
                 }
             }
             else
             {
-                await Clients.All.InvokeAsync("Send", $"{Context.User.Identity.Name}: {message}");
+                await Clients.All.InvokeAsync("Send", "All", $"{Context.User.Identity.Name}: {message}");
             }
         }
     }

@@ -53,7 +53,8 @@ namespace ChatSample
             services.AddTransient<IEmailSender, AuthMessageSender>();
             services.AddTransient<ISmsSender, AuthMessageSender>();
 
-            services.AddSignalR();
+            services.AddSignalR()
+                .AddRedis();
 
             services.AddAuthentication();
         }
