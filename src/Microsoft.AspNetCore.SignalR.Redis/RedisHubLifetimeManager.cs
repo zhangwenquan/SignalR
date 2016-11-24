@@ -50,7 +50,7 @@ namespace Microsoft.AspNetCore.SignalR.Redis
 
                 foreach (var connection in _connections)
                 {
-                    tasks.Add(connection.Channel.Output.WriteAsync((byte[])data));
+                    tasks.Add(connection.Value.WriteAsync(data));
                 }
 
                 previousBroadcastTask = Task.WhenAll(tasks);

@@ -46,7 +46,8 @@
       "version": "1.2.0-*",
       "type": "build"
     },
-    "Microsoft.AspNetCore.SignalR": "1.0.0-*"
+    "Microsoft.AspNetCore.SignalR": "1.0.0-*",
+    "Microsoft.AspNetCore.SignalR.Redis": "1.0.0-*"
   },
 
   "tools": {

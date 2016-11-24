@@ -12,6 +12,8 @@ namespace Microsoft.Extensions.DependencyInjection
     {
         public static ISignalRBuilder AddSignalR(this IServiceCollection services)
         {
+            services.AddOptions();
+
             services.AddSingleton(typeof(HubLifetimeManager<>), typeof(DefaultHubLifetimeManager<>));
             services.AddSingleton(typeof(IHubContext<>), typeof(HubContext<>));
             services.AddSingleton(typeof(HubEndPoint<>), typeof(HubEndPoint<>));

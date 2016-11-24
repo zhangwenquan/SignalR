@@ -54,6 +54,7 @@ namespace ChatSample
             services.AddTransient<ISmsSender, AuthMessageSender>();
 
             services.AddSignalR();
+                //.AddRedis();
 
             services.AddAuthentication();
         }
