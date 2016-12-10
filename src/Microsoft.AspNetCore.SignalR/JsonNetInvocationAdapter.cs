@@ -12,6 +12,7 @@ namespace Microsoft.AspNetCore.SignalR
 {
     public class JsonNetInvocationAdapter : IInvocationAdapter
     {
+        private readonly object[] _emptyArray = new object[0];
         private JsonSerializer _serializer = new JsonSerializer();
 
         public JsonNetInvocationAdapter()
@@ -37,12 +38,20 @@ namespace Microsoft.AspNetCore.SignalR
                 };
 
                 var paramTypes = getParams(jsonInvocation.Method);
-                invocation.Arguments = new object[paramTypes.Length];
 
-                for (int i = 0; i < paramTypes.Length; i++)
+                if (paramTypes == null)
                 {
-                    var paramType = paramTypes[i];
-                    invocation.Arguments[i] = jsonInvocation.Arguments[i].ToObject(paramType, _serializer);
+                    invocation.Arguments = _emptyArray;
+                }
+                else
+                {
+                    invocation.Arguments = new object[paramTypes.Length];
+
+                    for (int i = 0; i < paramTypes.Length; i++)
+                    {
+                        var paramType = paramTypes[i];
+                        invocation.Arguments[i] = jsonInvocation.Arguments[i].ToObject(paramType, _serializer);
+                    }
                 }
 
                 return invocation;
