@@ -5,7 +5,6 @@ using System;
 using System.Buffers;
 using System.IO.Pipelines;
 using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
 
 namespace Microsoft.AspNetCore.Sockets.Internal.Formatters
 {

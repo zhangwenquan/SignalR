@@ -18,7 +18,6 @@ namespace Microsoft.AspNetCore.Sockets.Common.Tests.Internal.Formatters
         public async Task ParseSSEMessage(string encodedMessage, MessageType messageType, string expectedMessage)
         {
             var stream = new MemoryStream();
-
             var streamWriter = new StreamWriter(stream);
             streamWriter.Write(encodedMessage);
             streamWriter.Flush();

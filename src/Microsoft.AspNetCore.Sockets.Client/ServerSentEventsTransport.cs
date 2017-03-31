@@ -118,24 +118,6 @@ namespace Microsoft.AspNetCore.Sockets.Client
                 }
 
             }
-
-            //using (var streamReader = new StreamReader(stream))
-            //{
-            //    var eventSourceData = new StringBuilder();
-            //    string line = string.Empty;
-            //    while ((line = await streamReader.ReadLineAsync()) != null)
-            //    {
-            //        eventSourceData.Append(line);
-            //        if (string.IsNullOrEmpty(line))
-            //        {
-            //            var parsedData = _parser.ParseSSEMessage(eventSourceData.ToString());
-            //            var payload = Encoding.UTF8.GetBytes(eventSourceData.ToString());
-            //            var message = new Message(payload, MessageType.Text);
-            //            _application.Output.TryWrite(message);
-            //            eventSourceData.Clear();
-            //        }
-            //    }
-            //}
         }
 
         public async Task SendMessages(Uri sendUrl, CancellationToken cancellationToken)

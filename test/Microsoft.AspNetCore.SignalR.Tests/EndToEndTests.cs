@@ -67,8 +67,8 @@ namespace Microsoft.AspNetCore.SignalR.Tests
         {
             get
             {
-                //yield return new object[] { new Func<ILoggerFactory, ITransport>(loggerFactory => new WebSocketsTransport(loggerFactory)) };
-                //yield return new object[] { new Func<ILoggerFactory, ITransport>(loggerFactory => new LongPollingTransport(new HttpClient(), loggerFactory)) };
+                yield return new object[] { new Func<ILoggerFactory, ITransport>(loggerFactory => new WebSocketsTransport(loggerFactory)) };
+                yield return new object[] { new Func<ILoggerFactory, ITransport>(loggerFactory => new LongPollingTransport(new HttpClient(), loggerFactory)) };
                 yield return new object[] { new Func<ILoggerFactory, ITransport>(loggerFactory => new ServerSentEventsTransport(new HttpClient(), loggerFactory)) };
             }
         }
