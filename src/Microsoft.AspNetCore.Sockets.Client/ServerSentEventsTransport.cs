@@ -110,7 +110,7 @@ namespace Microsoft.AspNetCore.Sockets.Client
                     }
 
                     _application.Output.TryWrite(message);
-                    break;
+                    _parser.Reset();
                 }
                 finally
                 {

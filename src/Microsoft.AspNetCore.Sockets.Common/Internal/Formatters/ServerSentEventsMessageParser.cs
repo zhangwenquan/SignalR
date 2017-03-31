@@ -12,6 +12,7 @@ namespace Microsoft.AspNetCore.Sockets.Internal.Formatters
     public  class ServerSentEventsMessageParser
     {
         private bool _firstLine = true;
+        private byte[] data;
 
         public ParsePhase ParseMessage(ReadableBuffer buffer, out ReadCursor consumed, out ReadCursor examined, out Message message)
         {
@@ -25,32 +26,54 @@ namespace Microsoft.AspNetCore.Sockets.Internal.Formatters
 
             while(start != end)
             {
-                if (ReadCursorOperations.Seek(start, end, out var found, (byte)'\r') == -1)
+                if (ReadCursorOperations.Seek(start, end, out var found, (byte)'\r',(byte)'\n') == -1)
                 {
                     return ParsePhase.Incomplete;
                 }
 
+                if( found == start)
+                {
+                    consumed = buffer.Move(start, 2);
+                    message = new Message(data, messageType);
+                    return ParsePhase.Completed;
+                }
                 var line = ToSpan(buffer.Slice(start, found));
 
-                //Is this the line that indicates the message type
+                //Parse the message type if its the first line
                 if (_firstLine)
                 {
                     messageType = GetMessageFormat(line);
-                    start = buffer.Move(found, 1);
+                    start = buffer.Move(found, 2);
                     _firstLine = false;
                     continue;
                 }
 
-                var data = line.Slice(line.IndexOf((byte)' ') + 1);
-                message = new Message(data.ToArray(), messageType);
-                return ParsePhase.Completed;
+                consumed = buffer.End;
+                var newData = line.Slice(line.IndexOf((byte)' ') + 1).ToArray();
+
+                //This handles the case when we receive multiple lines with data
+                if (data?.Length > 0)
+                {
+                    var tempData = new byte[data.Length + newData.Length];
+                    data.CopyTo(tempData, 0);
+                    newData.CopyTo(tempData, data.Length);
+                    data = tempData;
+                }
+                else
+                {
+                    data = line.Slice(line.IndexOf((byte)' ') + 1).ToArray();
+                }
+
+                start = buffer.Move(found, 2);
             }
+            message = new Message(data, messageType);
             return ParsePhase.Completed;
         }
 
         public void Reset()
         {
             _firstLine = true;
+            data = null;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -65,6 +88,7 @@ namespace Microsoft.AspNetCore.Sockets.Internal.Formatters
 
         private MessageType GetMessageFormat(ReadOnlySpan<byte> line)
         {
+            //Skip the "data: " part of the line
             var type = (char)line[6];
             switch (type)
             {
