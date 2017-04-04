@@ -26,11 +26,10 @@ namespace Microsoft.AspNetCore.Sockets.Common.Tests.Internal.Formatters
             var pipelineReader = stream.AsPipelineReader();
             var buffer = await pipelineReader.ReadToEndAsync();
 
-            var sseParser = new ServerSentEventsMessageParser();
             var consumed = new ReadCursor();
             var examined = new ReadCursor();
 
-            var parsePhase = sseParser.ParseMessage(buffer, out consumed, out examined, out Message message);
+            var parsePhase = ServerSentEventsMessageParser.ParseMessage(buffer, out consumed, out examined, out Message message);
             Assert.Equal(ServerSentEventsMessageParser.ParsePhase.Completed, parsePhase);
 
             var result = Encoding.UTF8.GetString(message.Payload);

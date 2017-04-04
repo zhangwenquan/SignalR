@@ -10,47 +10,70 @@ namespace Microsoft.AspNetCore.Sockets.Internal.Formatters
 {
     public  class ServerSentEventsMessageParser
     {
-        private bool _firstLine = true;
-        private byte[] data;
 
-        public ParsePhase ParseMessage(ReadableBuffer buffer, out ReadCursor consumed, out ReadCursor examined, out Message message)
+        public static ParsePhase ParseMessage(ReadableBuffer buffer, out ReadCursor consumed, out ReadCursor examined, out Message message)
         {
+            const byte ByteCR = (byte)'\r';
+            const byte ByteLF = (byte)'\n';
+            const byte ByteSpace = (byte)' ';
+            bool firstLine = true;
+            byte[] data = null;
             consumed = buffer.Start;
             examined = buffer.End;
             message = new Message();
             MessageType messageType = MessageType.Text;
+            var reader = new ReadableBufferReader(buffer);
 
             var start = consumed;
             var end = examined;
 
-            while(start != end)
+            while (!reader.End)
             {
-                if (ReadCursorOperations.Seek(start, end, out var found, (byte)'\r',(byte)'\n') == -1)
+                var span = reader.Span;
+                var backup = reader;
+                var ch1 = reader.Take();
+                var ch2 = reader.Take();
+                if (ch1 == ByteCR)
                 {
+                    if (ch2 == ByteLF)
+                    {
+                        consumed = buffer.End;
+                        message = new Message(data, messageType);
+                        return ParsePhase.Completed;
+                    }
+
+                    //When we are only missing the final \n
                     return ParsePhase.Incomplete;
                 }
 
-                if( found == start)
+                reader = backup;
+                if (ReadCursorOperations.Seek(start, end, out var lineEnd, ByteLF) == -1)
                 {
-                    consumed = buffer.Move(start, 2);
-                    message = new Message(data, messageType);
-                    return ParsePhase.Completed;
+                    // Not there
+                    return ParsePhase.Incomplete;
                 }
-                var line = ToSpan(buffer.Slice(start, found));
 
-                //Parse the message type if its the first line
-                if (_firstLine)
+                // Make sure LF is included in lineEnd
+                lineEnd = buffer.Move(lineEnd, 1);
+                var line = ConvertBufferToSpan(buffer.Slice(start, lineEnd));
+                reader.Skip(line.Length);
+
+                //Strip the \r\n from the span
+                line = line.Slice(0, line.Length - 2);
+
+                if (firstLine)
                 {
-                    messageType = GetMessageFormat(line);
-                    start = buffer.Move(found, 2);
-                    _firstLine = false;
+                    messageType = GetMessageType(line);
+                    start = lineEnd;
+                    firstLine = false;
                     continue;
                 }
 
-                consumed = buffer.End;
-                var newData = line.Slice(line.IndexOf((byte)' ') + 1).ToArray();
+                var nothing = buffer.End;
+                //Slice away the 'data: '
+                var newData = line.Slice(line.IndexOf(ByteSpace) + 1).ToArray();
+                start = lineEnd;
 
-                //This handles the case when we receive multiple lines with data
                 if (data?.Length > 0)
                 {
                     var tempData = new byte[data.Length + newData.Length];
@@ -60,23 +83,17 @@ namespace Microsoft.AspNetCore.Sockets.Internal.Formatters
                 }
                 else
                 {
-                    data = line.Slice(line.IndexOf((byte)' ') + 1).ToArray();
+                    data = newData;
                 }
-
-                start = buffer.Move(found, 2);
             }
+
+            consumed = buffer.End;
             message = new Message(data, messageType);
             return ParsePhase.Completed;
         }
 
-        public void Reset()
-        {
-            _firstLine = true;
-            data = null;
-        }
-
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private  Span<byte> ToSpan(ReadableBuffer buffer)
+        private static Span<byte> ConvertBufferToSpan(ReadableBuffer buffer)
         {
             if (buffer.IsSingleSpan)
             {
@@ -85,7 +102,7 @@ namespace Microsoft.AspNetCore.Sockets.Internal.Formatters
             return buffer.ToArray();
         }
 
-        private MessageType GetMessageFormat(ReadOnlySpan<byte> line)
+        private static MessageType GetMessageType(ReadOnlySpan<byte> line)
         {
             //Skip the "data: " part of the line
             var type = (char)line[6];

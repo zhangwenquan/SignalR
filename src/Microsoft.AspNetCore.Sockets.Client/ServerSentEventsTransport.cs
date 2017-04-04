@@ -30,7 +30,6 @@ namespace Microsoft.AspNetCore.Sockets.Client
 
         private IChannelConnection<SendMessage, Message> _application;
         private CancellationToken _cancellationToken = new CancellationToken();
-        private ServerSentEventsMessageParser _parser = new ServerSentEventsMessageParser();
 
         public Task Running { get; private set; } = Task.CompletedTask;
 
@@ -91,7 +90,7 @@ namespace Microsoft.AspNetCore.Sockets.Client
                         break;
                     }
 
-                    var parseResult = _parser.ParseMessage(input, out consumed, out examined, out var message);
+                    var parseResult = ServerSentEventsMessageParser.ParseMessage(input, out consumed, out examined, out var message);
 
                     switch (parseResult)
                     {
@@ -103,14 +102,12 @@ namespace Microsoft.AspNetCore.Sockets.Client
                                 throw new FormatException("There was an error parsing");
                             }
 
-                            _parser.Reset();
                             continue;
                         case ServerSentEventsMessageParser.ParsePhase.Error:
                             throw new FormatException("There was an error parsing");
                     }
 
                     _application.Output.TryWrite(message);
-                    _parser.Reset();
                 }
                 finally
                 {
