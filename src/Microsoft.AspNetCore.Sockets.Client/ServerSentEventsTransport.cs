@@ -30,6 +30,7 @@ namespace Microsoft.AspNetCore.Sockets.Client
 
         private IChannelConnection<SendMessage, Message> _application;
         private CancellationToken _cancellationToken = new CancellationToken();
+        private ServerSentEventsMessageParser _parser = new ServerSentEventsMessageParser();
 
         public Task Running { get; private set; } = Task.CompletedTask;
 
@@ -50,9 +51,9 @@ namespace Microsoft.AspNetCore.Sockets.Client
             var sseUrl = Utils.AppendPath(url, "sse");
             var sendUrl = Utils.AppendPath(url, "send");
             var sendTask = SendMessages(sendUrl, _cancellationToken);
-            var openConnectionTask = OpenConnection(_application, sseUrl, _cancellationToken);
+            var receiveTask = OpenConnection(_application, sseUrl, _cancellationToken);
 
-            Running = Task.WhenAll(sendTask, openConnectionTask).ContinueWith(t =>
+            Running = Task.WhenAll(sendTask, receiveTask).ContinueWith(t =>
             {
                 _logger.LogDebug("Transport stopped. Exception: '{0}'", t.Exception?.InnerException);
 
@@ -90,30 +91,29 @@ namespace Microsoft.AspNetCore.Sockets.Client
                         break;
                     }
 
-                    var parseResult = ServerSentEventsMessageParser.ParseMessage(input, out consumed, out examined, out var message);
+                    var parseResult = _parser.ParseMessage(input, out consumed, out examined, out var message);
 
                     switch (parseResult)
                     {
-                        case ServerSentEventsMessageParser.ParsePhase.Completed:
+                        case ServerSentEventsMessageParser.ParseResult.Completed:
+                            _application.Output.TryWrite(message);
+                            _parser.Reset();
                             break;
-                        case ServerSentEventsMessageParser.ParsePhase.Incomplete:
+                        case ServerSentEventsMessageParser.ParseResult.Incomplete:
                             if (result.IsCompleted)
                             {
                                 throw new FormatException("There was an error parsing");
                             }
 
                             continue;
-                        case ServerSentEventsMessageParser.ParsePhase.Error:
+                        case ServerSentEventsMessageParser.ParseResult.Error:
                             throw new FormatException("There was an error parsing");
                     }
-
-                    _application.Output.TryWrite(message);
                 }
                 finally
                 {
                     pipelineReader.Advance(consumed, examined);
                 }
-
             }
         }
 

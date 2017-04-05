@@ -83,10 +83,7 @@ namespace Microsoft.AspNetCore.Sockets
 
         private static void Scan(object state)
         {
-            if (!Debugger.IsAttached)
-            {
                 ((ConnectionManager)state).Scan();
-            }
         }
 
         private void Scan()
