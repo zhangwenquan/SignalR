@@ -29,7 +29,6 @@ namespace Microsoft.AspNetCore.Sockets.Client
         private readonly CancellationTokenSource _transportCts = new CancellationTokenSource();
 
         private IChannelConnection<SendMessage, Message> _application;
-        private CancellationToken _cancellationToken = new CancellationToken();
         private ServerSentEventsMessageParser _parser = new ServerSentEventsMessageParser();
 
         public Task Running { get; private set; } = Task.CompletedTask;
@@ -37,8 +36,14 @@ namespace Microsoft.AspNetCore.Sockets.Client
         public ServerSentEventsTransport(HttpClient httpClient)
             : this(httpClient, null)
         { }
+
         public ServerSentEventsTransport(HttpClient httpClient, ILoggerFactory loggerFactory)
         {
+            if (httpClient == null)
+            {
+                throw new ArgumentNullException(nameof(_httpClient));
+            }
+
             _httpClient = httpClient;
             _logger = (loggerFactory ?? NullLoggerFactory.Instance).CreateLogger<ServerSentEventsTransport>();
         }
@@ -50,8 +55,8 @@ namespace Microsoft.AspNetCore.Sockets.Client
             _application = application;
             var sseUrl = Utils.AppendPath(url, "sse");
             var sendUrl = Utils.AppendPath(url, "send");
-            var sendTask = SendMessages(sendUrl, _cancellationToken);
-            var receiveTask = OpenConnection(_application, sseUrl, _cancellationToken);
+            var sendTask = SendMessages(sendUrl, _transportCts.Token);
+            var receiveTask = OpenConnection(_application, sseUrl, _transportCts.Token);
 
             Running = Task.WhenAll(sendTask, receiveTask).ContinueWith(t =>
             {
@@ -102,12 +107,9 @@ namespace Microsoft.AspNetCore.Sockets.Client
                         case ServerSentEventsMessageParser.ParseResult.Incomplete:
                             if (result.IsCompleted)
                             {
-                                throw new FormatException("There was an error parsing");
+                                throw new FormatException("Error parsing data from event stream");
                             }
-
-                            continue;
-                        case ServerSentEventsMessageParser.ParseResult.Error:
-                            throw new FormatException("There was an error parsing");
+                            break;
                     }
                 }
                 finally

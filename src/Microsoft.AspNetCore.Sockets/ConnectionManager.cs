@@ -9,7 +9,6 @@ using System.Threading.Tasks;
 using System.Threading.Tasks.Channels;
 using Microsoft.AspNetCore.Sockets.Internal;
 using Microsoft.Extensions.Logging;
-using System.Diagnostics;
 
 namespace Microsoft.AspNetCore.Sockets
 {
