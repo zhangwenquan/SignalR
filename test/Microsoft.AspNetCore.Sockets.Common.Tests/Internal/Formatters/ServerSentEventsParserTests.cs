@@ -62,7 +62,9 @@ namespace Microsoft.AspNetCore.Sockets.Common.Tests.Internal.Formatters
         [InlineData("data: T\r\ndata: Hello, World\n\n", MessageType.Text, "Error parsing data from event stream")]
         [InlineData("data: T\r\ndata: Major\r\ndata:  Key\rndata:  Alert\r\n\r\\", MessageType.Text, "Expected a '\r\n' line ending")]
         [InlineData("data: T\r\ndata: Major\r\ndata:  Key\r\ndata:  Alert\r\n\r\\", MessageType.Text, "Expected a '\r\n' line ending")]
-        //[InlineData("data: T\r\nfoo: Hello, World\r\n\r\n", MessageType.Text, "Hello, World")]
+        [InlineData("data: T\r\nfoo: Hello, World\r\n\r\n", MessageType.Text, "Expected the message prefix 'data: '")]
+        [InlineData("foo: T\r\ndata: Hello, World\r\n\r\n", MessageType.Text, "Expected the message prefix 'data: '")]
+        [InlineData("food: T\r\ndata: Hello, World\r\n\r\n", MessageType.Text, "Expected the message prefix 'data: '")]
         public async Task ParseSSEMessageFailureCases(string encodedMessage, MessageType messageType, string expectedExceptionMessage)
         {
             var stream = new MemoryStream();

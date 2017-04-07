@@ -6,6 +6,7 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.IO.Pipelines;
 using System.Runtime.CompilerServices;
+using System.Text;
 
 namespace Microsoft.AspNetCore.Sockets.Internal.Formatters
 {
@@ -67,6 +68,11 @@ namespace Microsoft.AspNetCore.Sockets.Internal.Formatters
                         }
                         break;
                     case InternalParseState.ReadMessagePayload:
+                        if (!StartsWithDataPrefix(line))
+                        {
+                            throw new FormatException("Expected the message prefix 'data: '");
+                        }
+
                         //Slice away the 'data: '
                         var newData = line.Slice(line.IndexOf(ByteSpace) + 1).ToArray();
                         start = lineEnd;
@@ -143,23 +149,31 @@ namespace Microsoft.AspNetCore.Sockets.Internal.Formatters
             _data.Clear();
         }
 
-        private void CheckLinePrefix(Span<byte> line)
+        private bool StartsWithDataPrefix(ReadOnlySpan<byte> line)
         {
-            //var prefix = "data: ".To
-            //if(line.Length > 6)
-            //{
-            //    line.StartsWith
-            //}
+            var dataPrefix = Encoding.UTF8.GetBytes("data: ");
+            var prefixSpan = new ReadOnlySpan<byte>(dataPrefix);
+            if (line.StartsWith(dataPrefix))
+            {
+                return true;
+            }
+
+            return false;
         }
 
         private MessageType GetMessageType(ReadOnlySpan<byte> line)
         {
-            //Skip the "data: " part of the line
+            if (!StartsWithDataPrefix(line))
+            {
+                throw new FormatException("Expected the message prefix 'data: '");
+            }
+
             if (line.Length != 7)
             {
                 throw new FormatException("There was an error parsing the message type");
             }
 
+            //Skip the "data: " part of the line
             var type = (char)line[6];
             switch (type)
             {
