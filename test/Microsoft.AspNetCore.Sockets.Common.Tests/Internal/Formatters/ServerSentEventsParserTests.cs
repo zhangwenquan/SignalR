@@ -44,7 +44,10 @@ namespace Microsoft.AspNetCore.Sockets.Common.Tests.Internal.Formatters
 
         [Theory]
         [InlineData("", MessageType.Text, "Error parsing data from event stream")]
+        [InlineData("data: X\r\n\r\n", MessageType.Text, "Unknown message type: 'X'")]
+        [InlineData("data: X\r\n", MessageType.Text, "Unknown message type: 'X'")]
         [InlineData("data:", MessageType.Text, "Expected a '\r\n' line ending")]
+        [InlineData("data: T\n", MessageType.Text, "There was an error parsing the message type")]
         [InlineData("data: T\r\nda", MessageType.Text, "Expected a '\r\n' line ending")]
         [InlineData("data: T\r\ndata:", MessageType.Text, "Expected a '\r\n' line ending")]
         [InlineData("data: T\r\ndata: Hello, World", MessageType.Text, "Expected a '\r\n' line ending")]
@@ -53,13 +56,13 @@ namespace Microsoft.AspNetCore.Sockets.Common.Tests.Internal.Formatters
         [InlineData("data: T\r\ndata: Hello, World\r\n\r", MessageType.Text, "Expected a '\r\n' line ending")]
         [InlineData("data: T\r\ndata: Hello, World\r\n\r\\", MessageType.Text, "Expected a '\r\n' line ending")]
         [InlineData("data: T\r\ndata: Hello, World\r\n\r\n\n", MessageType.Text, "Unexpected data after line ending")]
-        [InlineData("data: X\r\n\r\n", MessageType.Text, "Unknown message type: 'X'")]
-        [InlineData("data: X\r\n", MessageType.Text, "Unknown message type: 'X'")]
         [InlineData("data: Not the message type\r\n\r\n", MessageType.Text, "There was an error parsing the message type")]
         [InlineData("data: Not the message type\r\r\n", MessageType.Text, "There was an error parsing the message type")]
-        [InlineData("data: T\n", MessageType.Text, "There was an error parsing the message type")]
         [InlineData("data: T\r\ndata: Hello, World\r\r\n\n", MessageType.Text, "Error parsing data from event stream")]
         [InlineData("data: T\r\ndata: Hello, World\n\n", MessageType.Text, "Error parsing data from event stream")]
+        [InlineData("data: T\r\ndata: Major\r\ndata:  Key\rndata:  Alert\r\n\r\\", MessageType.Text, "Expected a '\r\n' line ending")]
+        [InlineData("data: T\r\ndata: Major\r\ndata:  Key\r\ndata:  Alert\r\n\r\\", MessageType.Text, "Expected a '\r\n' line ending")]
+        //[InlineData("data: T\r\nfoo: Hello, World\r\n\r\n", MessageType.Text, "Hello, World")]
         public async Task ParseSSEMessageFailureCases(string encodedMessage, MessageType messageType, string expectedExceptionMessage)
         {
             var stream = new MemoryStream();
