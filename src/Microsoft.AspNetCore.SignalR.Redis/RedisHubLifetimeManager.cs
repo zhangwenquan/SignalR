@@ -29,6 +29,8 @@ namespace Microsoft.AspNetCore.SignalR.Redis
         private readonly ISubscriber _bus;
         private readonly ILogger _logger;
         private readonly RedisOptions _options;
+        private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
+        private BlockingCollection<Func<Task>> bc = new BlockingCollection<Func<Task>>();
 
         // This serializer is ONLY use to transmit the data through redis, it has no connection to the serializer used on each connection.
         private readonly JsonSerializer _serializer = new JsonSerializer
@@ -62,19 +64,61 @@ namespace Microsoft.AspNetCore.SignalR.Redis
             _redisServerConnection.PreserveAsyncOrder = true;
             _bus = _redisServerConnection.GetSubscriber();
 
+            Task.Run(async () =>
+            {
+                foreach (var item in bc.GetConsumingEnumerable())
+                {
+                    await item();
+                }
+            });
+
+            //var semaphore = new SemaphoreSlim(1, 1);
+            var taskqueue = Task.CompletedTask;
+
             var channelName = typeof(THub).FullName;
             _logger.LogInformation("Subscribing to channel: {channel}", channelName);
             _bus.Subscribe(channelName, async (c, data) =>
             {
-                _logger.LogTrace("Received message from redis channel {channel}", channelName);
-
-                var message = DeserializeMessage(data);
-
-                // TODO: This isn't going to work when we allow JsonSerializer customization or add Protobuf
-
-                foreach (var connection in _connections)
+                //await semaphore.WaitAsync(_cancellationTokenSource.Token);
+                try
                 {
-                    await WriteAsync(connection, message);
+                    await taskqueue;
+
+                    var message = DeserializeMessage(data);
+                    _logger.LogTrace("{id} Received message from redis channel {channel}", message.InvocationId, channelName);
+                    //foreach (var connection in _connections)
+                    //    bc.Add(async () =>
+                    //    {
+                    //        _logger.LogTrace("{id} Received message from redis channel {channel}", message.InvocationId, channelName);
+                    //        await WriteAsync(connection, message);
+                    //    });
+
+                    //bc.Add(async () =>
+                    //{
+                    //    await taskqueue;
+                    //    _logger.LogTrace("{id} Received message from redis channel {channel}", message.InvocationId, channelName);
+                    //    var tasks = new List<Task>(_connections.Count);
+                    //    foreach (var connection in _connections)
+                    //    {
+                    //        tasks.Add(WriteAsync(connection, message));
+                    //        //await WriteAsync(connection, message);
+                    //    }
+
+                    //    taskqueue = Task.WhenAll(tasks);
+                    //});
+                    // TODO: This isn't going to work when we allow JsonSerializer customization or add Protobuf
+                    var tasks = new List<Task>(_connections.Count);
+                    foreach (var connection in _connections)
+                    {
+                        tasks.Add(WriteAsync(connection, message));
+                        //await WriteAsync(connection, message);
+                    }
+
+                    taskqueue = Task.WhenAll(tasks);
+                }
+                finally
+                {
+                    //semaphore.Release();
                 }
             });
         }
@@ -118,7 +162,7 @@ namespace Microsoft.AspNetCore.SignalR.Redis
                 payload = stream.ToArray();
             }
 
-            _logger.LogTrace("Publishing message to redis channel {channel}", channel);
+            _logger.LogTrace("{id} Publishing message to redis channel {channel}", hubMessage.InvocationId, channel);
             await _bus.PublishAsync(channel, payload);
         }
 
@@ -269,6 +313,7 @@ namespace Microsoft.AspNetCore.SignalR.Redis
 
         public void Dispose()
         {
+            _cancellationTokenSource.Cancel();
             _bus.UnsubscribeAll();
             _redisServerConnection.Dispose();
         }

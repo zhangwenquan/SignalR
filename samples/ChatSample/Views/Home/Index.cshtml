@@ -63,7 +63,8 @@ connection.start(transportType).catch(err => appendLine(err, 'red'));
 
 document.getElementById('sendmessage').addEventListener('submit', event => {
     let data = document.getElementById('new-message').value;
-    connection.invoke('Send', data).catch(err => appendLine(err, 'red'));
+    for (var i = 0; i < 100; ++i)
+        connection.invoke('Send', data + i).catch(err => appendLine(err, 'red'));
     event.preventDefault();
 });
 
